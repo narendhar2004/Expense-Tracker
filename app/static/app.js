@@ -16,6 +16,63 @@ const CATEGORY_LABELS = {
 };
 
 /* ============================================================
+   THEME MANAGER
+   ============================================================ */
+
+const THEME_KEY = 'expense-tracker-theme';
+
+function getStoredTheme() {
+  return localStorage.getItem(THEME_KEY) || 'light';
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem(THEME_KEY, theme);
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  const next    = current === 'light' ? 'dark' : 'light';
+  applyTheme(next);
+}
+
+function initTheme() {
+  // Apply stored theme immediately — before page renders
+  // to avoid flash of wrong theme
+  applyTheme(getStoredTheme());
+
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.addEventListener('click', toggleTheme);
+}
+
+/* ============================================================
+   PRELOADER MANAGER
+   ============================================================ */
+
+function initPreloader() {
+  const preloader = document.getElementById('preloader');
+  if (!preloader) return;
+
+  // Add loading class to body to hide content until ready
+  document.body.classList.add('loading');
+
+  // Hide preloader when everything is fully loaded
+  window.addEventListener('load', () => {
+    // Small delay so users actually see the preloader
+    setTimeout(() => {
+      preloader.classList.add('hidden');
+      document.body.classList.remove('loading');
+    }, 800);
+  });
+
+  // Safety net — always hide after 3 seconds even if load event is slow
+  setTimeout(() => {
+    preloader.classList.add('hidden');
+    document.body.classList.remove('loading');
+  }, 3000);
+}
+
+/* ============================================================
    STATE
    ============================================================ */
 let expenses = [];
@@ -395,13 +452,15 @@ async function logoutUser() {
    ============================================================ */
 
 async function init() {
-  // Only run dashboard logic when the form exists
+  // ── Theme and preloader run on every page ──────────────
+  initTheme();
+  initPreloader();
+
+  // ── Dashboard-only logic ───────────────────────────────
   if (!form) return;
 
-  // Set today's date default
   if (dateInput) dateInput.valueAsDate = new Date();
 
-  // Wire up form
   form.addEventListener('submit', handleSubmit);
 
   if (resetBtn) {
@@ -412,23 +471,17 @@ async function init() {
     });
   }
 
-  // Wire up table delegation
   if (tbody) tbody.addEventListener('click', handleTableClick);
 
-  // Wire up search + filter
   if (searchInput)    searchInput.addEventListener('input',  debouncedFilter);
   if (filterCategory) filterCategory.addEventListener('change', applyFilters);
 
-  // Load initial data from API
-  // The page already has SSR-rendered rows, but we sync JS state
   try {
     const data = await fetchExpenses();
     expenses = data.expenses;
     updateStats();
-    // Re-render to ensure JS state matches DOM
     renderAllRows(expenses);
   } catch (err) {
-    // SSR rows still visible — app is usable, just show a soft warning
     showToast('Could not sync latest data.', 'error');
   }
 }

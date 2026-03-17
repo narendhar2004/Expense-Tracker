@@ -1,15 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Personal expense tracker — manage your spending">
   <title>{% block title %}Expense Tracker{% endblock %}</title>
+   <script>
+    (function() {
+      const theme = localStorage.getItem('expense-tracker-theme') || 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   {% block head %}{% endblock %}
 </head>
 <body>
 
+  <!-- ── PRELOADER ────────────────────────────────────── -->
+  <div id="preloader">
+    <div class="preloader-inner">
+      <div class="preloader-logo">₹</div>
+      <div class="preloader-bar">
+        <div class="preloader-fill"></div>
+      </div>
+      <div class="preloader-text">Loading your finances...</div>
+    </div>
+  </div>
+
+  <!-- ── HEADER ────────────────────────────────────────── -->
   <header>
     <div class="header-inner">
       <a href="{{ url_for('main.dashboard') }}" class="logo">
@@ -39,11 +57,43 @@
           <li><a href="{{ url_for('main.login_page') }}">Log in</a></li>
           <li><a href="{{ url_for('main.register_page') }}" class="btn-nav">Sign up</a></li>
           {% endif %}
+
+          <!-- ── THEME TOGGLE ── -->
+          <li>
+            <button class="theme-toggle" id="theme-toggle"
+                    aria-label="Toggle dark mode" title="Toggle theme">
+              <span class="theme-icon-sun">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="5"/>
+                  <line x1="12" y1="1"  x2="12" y2="3"/>
+                  <line x1="12" y1="21" x2="12" y2="23"/>
+                  <line x1="4.22" y1="4.22"  x2="5.64" y2="5.64"/>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                  <line x1="1" y1="12" x2="3"  y2="12"/>
+                  <line x1="21" y1="12" x2="23" y2="12"/>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                  <line x1="18.36" y1="5.64"  x2="19.78" y2="4.22"/>
+                </svg>
+              </span>
+              <span class="theme-icon-moon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3
+                           7 7 0 0 0 21 12.79z"/>
+                </svg>
+              </span>
+            </button>
+          </li>
+
         </ul>
       </nav>
     </div>
   </header>
 
+  <!-- ── MAIN CONTENT ──────────────────────────────────── -->
   <main>
     {% with messages = get_flashed_messages(with_categories=True) %}
       {% if messages %}

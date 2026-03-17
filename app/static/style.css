@@ -812,3 +812,165 @@ aside {
   nav a, nav .nav-logout { padding: 5px 8px; font-size: 0.8125rem; }
   .nav-user { display: none; }
 }
+
+/* ============================================================
+   THEME — MANUAL DARK MODE (data-theme attribute)
+   Overrides the prefers-color-scheme media query when
+   the user explicitly toggles the theme button.
+   ============================================================ */
+
+[data-theme="dark"] {
+  --color-bg:             #0f0f0e;
+  --color-surface:        #1c1c1a;
+  --color-surface-2:      #242422;
+  --color-border:         #2e2e2b;
+  --color-text-primary:   #f0f0eb;
+  --color-text-secondary: #9ca3af;
+  --color-text-muted:     #6b7280;
+  --color-accent:         #3b82f6;
+  --color-accent-hover:   #60a5fa;
+  --color-danger-bg:      #2d1515;
+  --color-success-bg:     #0d2310;
+
+  --color-food:               #3d2e00; --color-food-text:           #fcd34d;
+  --color-transport:          #0d2240; --color-transport-text:      #93c5fd;
+  --color-shopping:           #3d0d24; --color-shopping-text:       #f9a8d4;
+  --color-health:             #0d2d18; --color-health-text:         #86efac;
+  --color-entertainment:      #1e1040; --color-entertainment-text:  #c4b5fd;
+  --color-utilities:          #1e2330; --color-utilities-text:      #94a3b8;
+  --color-other:              #232323; --color-other-text:          #d1d5db;
+}
+
+[data-theme="light"] {
+  --color-bg:            #f5f5f0;
+  --color-surface:       #ffffff;
+  --color-surface-2:     #f9fafb;
+  --color-border:        #e5e5e0;
+  --color-text-primary:  #1a1a1a;
+  --color-text-secondary:#6b7280;
+  --color-text-muted:    #9ca3af;
+  --color-accent:        #2563eb;
+  --color-accent-hover:  #1d4ed8;
+  --color-danger-bg:     #fef2f2;
+  --color-success-bg:    #f0fdf4;
+
+  --color-food:               #fef3c7; --color-food-text:           #92400e;
+  --color-transport:          #dbeafe; --color-transport-text:      #1e40af;
+  --color-shopping:           #fce7f3; --color-shopping-text:       #9d174d;
+  --color-health:             #dcfce7; --color-health-text:         #166534;
+  --color-entertainment:      #ede9fe; --color-entertainment-text:  #4c1d95;
+  --color-utilities:          #f1f5f9; --color-utilities-text:      #334155;
+  --color-other:              #f3f4f6; --color-other-text:          #374151;
+}
+
+/* ============================================================
+   THEME TOGGLE BUTTON
+   ============================================================ */
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1.5px solid var(--color-border);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--transition-fast),
+              border-color var(--transition-fast),
+              color var(--transition-fast),
+              transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+  background: var(--color-border);
+  color: var(--color-text-primary);
+  transform: rotate(20deg);
+}
+
+/* Show sun in dark mode, moon in light mode */
+[data-theme="light"] .theme-icon-moon { display: none; }
+[data-theme="light"] .theme-icon-sun  { display: flex; }
+[data-theme="dark"]  .theme-icon-sun  { display: none; }
+[data-theme="dark"]  .theme-icon-moon { display: flex; }
+
+/* ============================================================
+   PRELOADER
+   ============================================================ */
+#preloader {
+  position: fixed;
+  inset: 0;
+  background: var(--color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+#preloader.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.preloader-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.preloader-logo {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  animation: preloader-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes preloader-pulse {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%       { transform: scale(1.15); opacity: 0.75; }
+}
+
+.preloader-bar {
+  width: 180px;
+  height: 3px;
+  background: var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.preloader-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-accent);
+  animation: preloader-load 1.4s ease-in-out infinite;
+}
+
+@keyframes preloader-load {
+  0%   { width: 0%;    margin-left: 0%; }
+  50%  { width: 70%;   margin-left: 15%; }
+  100% { width: 0%;    margin-left: 100%; }
+}
+
+.preloader-text {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  letter-spacing: 0.03em;
+  animation: preloader-fade 1.4s ease-in-out infinite;
+}
+
+@keyframes preloader-fade {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; }
+}
+
+/* Prevent flash of content while preloader is showing */
+body.loading main,
+body.loading header,
+body.loading footer {
+  visibility: hidden;
+}
