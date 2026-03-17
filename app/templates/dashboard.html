@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Expense Tracker{% endblock %}
+
+{% block content %}
+
+<section class="stats-section" aria-labelledby="summary-heading">
+  <h2 id="summary-heading" class="sr-only">Summary</h2>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span class="stat-label">Total spent</span>
+      <span class="stat-value" id="total-spent">
+        ₹{{ "{:,.2f}".format(stats.total) }}
+      </span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Transactions</span>
+      <span class="stat-value" id="total-count">{{ stats.count }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Largest expense</span>
+      <span class="stat-value" id="largest-expense">
+        ₹{{ "{:,.2f}".format(stats.largest) }}
+      </span>
+    </div>
+  </div>
+</section>
+
+<div class="content-grid">
+
+  <aside>
+    <section class="card" aria-labelledby="add-expense-heading">
+      <h2 id="add-expense-heading">Add expense</h2>
+      <form id="expense-form" novalidate>
+
+        <div class="form-group">
+          <label for="expense-description">Description</label>
+          <input type="text" id="expense-description" name="description"
+                 placeholder="e.g. Lunch at Saravana Bhavan"
+                 maxlength="200" required autocomplete="off">
+          <span class="field-error" id="description-error" role="alert"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="expense-amount">Amount (₹)</label>
+          <input type="number" id="expense-amount" name="amount"
+                 placeholder="0.00" min="0.01" max="10000000"
+                 step="0.01" required>
+          <span class="field-error" id="amount-error" role="alert"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="expense-category">Category</label>
+          <select id="expense-category" name="category" required>
+            <option value="">Select a category</option>
+            <option value="food">Food &amp; Dining</option>
+            <option value="transport">Transport</option>
+            <option value="shopping">Shopping</option>
+            <option value="health">Health</option>
+            <option value="entertainment">Entertainment</option>
+            <option value="utilities">Utilities</option>
+            <option value="other">Other</option>
+          </select>
+          <span class="field-error" id="category-error" role="alert"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="expense-date">Date</label>
+          <input type="date" id="expense-date" name="date" required>
+          <span class="field-error" id="date-error" role="alert"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="expense-notes">
+            Notes <span class="optional">(optional)</span>
+          </label>
+          <textarea id="expense-notes" name="notes"
+                    rows="2" maxlength="500"
+                    placeholder="Any extra details..."></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" id="submit-btn">Add expense</button>
+          <button type="button" id="reset-btn">Clear</button>
+        </div>
+
+      </form>
+    </section>
+
+    <section class="card export-card" aria-labelledby="export-heading">
+      <h2 id="export-heading">Export</h2>
+      <a href="/api/expenses/export" class="btn-export" download>
+        Download CSV
+      </a>
+    </section>
+  </aside>
+
+  <section aria-labelledby="expense-list-heading">
+    <div class="list-header">
+      <h2 id="expense-list-heading">Transactions</h2>
+      <div class="filters">
+        <input type="search" id="search-input"
+               placeholder="Search..." aria-label="Search expenses">
+        <select id="filter-category" aria-label="Filter by category">
+          <option value="">All categories</option>
+          <option value="food">Food &amp; Dining</option>
+          <option value="transport">Transport</option>
+          <option value="shopping">Shopping</option>
+          <option value="health">Health</option>
+          <option value="entertainment">Entertainment</option>
+          <option value="utilities">Utilities</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table id="expense-table" aria-label="Expense transactions">
+        <thead>
+          <tr>
+            <th scope="col">Date</th>
+            <th scope="col">Description</th>
+            <th scope="col">Category</th>
+            <th scope="col" class="amount-col">Amount</th>
+            <th scope="col"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody id="expense-tbody">
+          {% if expenses %}
+            {% for expense in expenses %}
+            <tr data-id="{{ expense.id }}">
+              <td>{{ expense.date }}</td>
+              <td>
+                <div class="expense-desc">{{ expense.description }}</div>
+                {% if expense.notes %}
+                  <div class="expense-notes">{{ expense.notes }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <span class="category-badge {{ expense.category }}">
+                  {{ expense.category | title }}
+                </span>
+              </td>
+              <td class="amount-col">₹{{ "{:,.2f}".format(expense.amount) }}</td>
+              <td>
+                <button class="delete-btn" data-action="delete"
+                        aria-label="Delete {{ expense.description }}">
+                  Remove
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr class="empty-row" id="empty-row">
+              <td colspan="5">No expenses yet. Add your first one above.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3" class="total-label">Total</td>
+            <td class="amount-col total-value" id="table-total">
+              ₹{{ "{:,.2f}".format(stats.total) }}
+            </td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </section>
+
+</div>
+{% endblock %}

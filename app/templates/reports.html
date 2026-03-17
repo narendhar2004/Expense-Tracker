@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Reports — Expense Tracker{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="reports-page">
+
+  <section class="stats-section" aria-labelledby="report-summary-heading">
+    <h2 id="report-summary-heading" class="sr-only">Summary</h2>
+    <div class="stats-grid" id="report-stats">
+      <div class="stat-card">
+        <span class="stat-label">Total spent</span>
+        <span class="stat-value" id="rep-total">—</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Transactions</span>
+        <span class="stat-value" id="rep-count">—</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Largest expense</span>
+        <span class="stat-value" id="rep-largest">—</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="charts-grid">
+    <div class="card">
+      <h2>Spending by category</h2>
+      <div class="chart-container">
+        <canvas id="category-chart" aria-label="Category spending chart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Monthly spending</h2>
+      <div class="chart-container">
+        <canvas id="monthly-chart" aria-label="Monthly spending chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Category breakdown</h2>
+    <div id="breakdown-list">
+      <p class="loading-text">Loading...</p>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(async function initReports() {
+  try {
+    const res = await fetch('/api/expenses/summary', { credentials: 'include' });
+    if (!res.ok) { window.location.href = '/login'; return; }
+    const data = await res.json();
+    renderReports(data);
+  } catch (err) {
+    document.getElementById('breakdown-list').innerHTML =
+      '<p class="error-text">Failed to load report data.</p>';
+  }
+})();
+
+function fmt(n) {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency', currency: 'INR', minimumFractionDigits: 2
+  }).format(n);
+}
+
+const CAT_LABELS = {
+  food:'Food & Dining', transport:'Transport', shopping:'Shopping',
+  health:'Health', entertainment:'Entertainment',
+  utilities:'Utilities', other:'Other'
+};
+const CAT_COLORS = {
+  food:'#f59e0b', transport:'#3b82f6', shopping:'#ec4899',
+  health:'#22c55e', entertainment:'#8b5cf6',
+  utilities:'#6b7280', other:'#94a3b8'
+};
+
+function renderReports(data) {
+  document.getElementById('rep-total').textContent   = fmt(data.total);
+  document.getElementById('rep-count').textContent   = data.count;
+  document.getElementById('rep-largest').textContent = fmt(data.largest || 0);
+
+  if (Object.keys(data.by_category).length === 0) {
+    document.getElementById('breakdown-list').innerHTML =
+      '<p class="empty-text">No expenses recorded yet.</p>';
+    return;
+  }
+
+  buildCategoryChart(data.by_category);
+  buildMonthlyChart(data.by_month);
+  buildBreakdown(data.by_category, data.total);
+}
+
+function buildCategoryChart(byCategory) {
+  const keys   = Object.keys(byCategory);
+  const labels = keys.map(k => CAT_LABELS[k] || k);
+  const values = Object.values(byCategory);
+  const colors = keys.map(k => CAT_COLORS[k] || '#94a3b8');
+
+  new Chart(document.getElementById('category-chart').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data: values, backgroundColor: colors, borderWidth: 0, hoverOffset: 8 }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'right', labels: { font: { size: 12 }, boxWidth: 14 } },
+        tooltip: { callbacks: { label: ctx => ' ' + fmt(ctx.raw) } }
+      }
+    }
+  });
+}
+
+function buildMonthlyChart(byMonth) {
+  const months = Object.keys(byMonth).sort();
+  const labels = months.map(m => {
+    const [y, mo] = m.split('-');
+    return new Date(y, mo - 1).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+  });
+
+  new Chart(document.getElementById('monthly-chart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: months.map(m => byMonth[m]),
+        backgroundColor: '#3b82f6',
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          ticks: {
+            callback: v => '₹' + v.toLocaleString('en-IN'),
+            font: { size: 11 }
+          }
+        }
+      }
+    }
+  });
+}
+
+function buildBreakdown(byCategory, total) {
+  const list = document.getElementById('breakdown-list');
+  list.innerHTML = '';
+  Object.entries(byCategory)
+    .sort((a, b) => b[1] - a[1])
+    .forEach(([cat, amount]) => {
+      const pct = total > 0 ? ((amount / total) * 100).toFixed(1) : 0;
+      const row = document.createElement('div');
+      row.className = 'breakdown-row';
+      row.innerHTML = `
+        <span class="category-badge ${cat}">${CAT_LABELS[cat] || cat}</span>
+        <div class="breakdown-bar-wrap">
+          <div class="breakdown-bar" style="width:${pct}%;background:${CAT_COLORS[cat] || '#94a3b8'}"></div>
+        </div>
+        <span class="breakdown-amount">${fmt(amount)}</span>
+        <span class="breakdown-pct">${pct}%</span>
+      `;
+      list.appendChild(row);
+    });
+}
+</script>
+{% endblock %}

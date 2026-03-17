@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Personal expense tracker — manage your spending">
+  <title>{% block title %}Expense Tracker{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <a href="{{ url_for('main.dashboard') }}" class="logo">
+        <span class="logo-icon">₹</span>
+        <span class="logo-text">Expense Tracker</span>
+      </a>
+      <nav aria-label="Main navigation">
+        <ul>
+          {% if current_user.is_authenticated %}
+          <li>
+            <a href="{{ url_for('main.dashboard') }}"
+               {% if request.endpoint == 'main.dashboard' %}aria-current="page"{% endif %}>
+              Dashboard
+            </a>
+          </li>
+          <li>
+            <a href="{{ url_for('main.reports') }}"
+               {% if request.endpoint == 'main.reports' %}aria-current="page"{% endif %}>
+              Reports
+            </a>
+          </li>
+          <li class="nav-user">{{ current_user.username }}</li>
+          <li>
+            <button class="nav-logout" onclick="logoutUser()">Log out</button>
+          </li>
+          {% else %}
+          <li><a href="{{ url_for('main.login_page') }}">Log in</a></li>
+          <li><a href="{{ url_for('main.register_page') }}" class="btn-nav">Sign up</a></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    {% with messages = get_flashed_messages(with_categories=True) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}" role="alert">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <p>&copy; 2026 Expense Tracker</p>
+    </div>
+  </footer>
+
+  <div id="toast-container" aria-live="polite"></div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

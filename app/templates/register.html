@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Create account — Expense Tracker{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-header">
+      <h1>Create account</h1>
+      <p>Start tracking your expenses</p>
+    </div>
+
+    <form id="register-form" novalidate>
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username"
+               placeholder="yourname" required
+               minlength="2" maxlength="64" autocomplete="username">
+        <span class="field-error" id="username-error" role="alert"></span>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email"
+               placeholder="you@example.com" required autocomplete="email">
+        <span class="field-error" id="email-error" role="alert"></span>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password"
+               placeholder="At least 8 characters" required
+               minlength="8" autocomplete="new-password">
+        <span class="field-error" id="password-error" role="alert"></span>
+      </div>
+
+      <div class="form-group" id="form-error-wrap" style="display:none">
+        <span class="field-error" id="form-error" role="alert"></span>
+      </div>
+
+      <button type="submit" class="btn-primary btn-full" id="submit-btn">
+        Create account
+      </button>
+    </form>
+
+    <p class="auth-footer">
+      Already have an account?
+      <a href="{{ url_for('main.login_page') }}">Log in</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('register-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn      = document.getElementById('submit-btn');
+  const username = document.getElementById('username').value.trim();
+  const email    = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+
+  clearAuthErrors();
+  let ok = true;
+  if (!username) { showAuthError('username-error', 'Username is required.'); ok = false; }
+  if (!email)    { showAuthError('email-error', 'Email is required.'); ok = false; }
+  if (password.length < 8) { showAuthError('password-error', 'Password must be at least 8 characters.'); ok = false; }
+  if (!ok) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Creating account...';
+
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ username, email, password }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      window.location.href = '/';
+    } else if (data.errors) {
+      Object.entries(data.errors).forEach(([field, msg]) => {
+        showAuthError(field + '-error', Array.isArray(msg) ? msg[0] : msg);
+      });
+    } else {
+      document.getElementById('form-error-wrap').style.display = '';
+      showAuthError('form-error', data.error || 'Registration failed.');
+    }
+  } catch (err) {
+    document.getElementById('form-error-wrap').style.display = '';
+    showAuthError('form-error', 'Cannot connect to server.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Create account';
+  }
+});
+
+function showAuthError(id, msg) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = msg;
+}
+function clearAuthErrors() {
+  ['username-error','email-error','password-error','form-error'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '';
+  });
+  document.getElementById('form-error-wrap').style.display = 'none';
+}
+</script>
+{% endblock %}
