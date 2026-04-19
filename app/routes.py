@@ -50,7 +50,7 @@ def get_expenses():
     expenses = query.all()
     return jsonify({
         'expenses': [e.to_dict() for e in expenses],
-        'total':    round(sum(e.amount for e in expenses), 2),
+        'total':    float(round(sum(e.amount for e in expenses), 2)),
         'count':    len(expenses),
     }), 200
 
@@ -101,11 +101,11 @@ def get_summary():
         by_month[month] = round(by_month.get(month, 0) + e.amount, 2)
 
     return jsonify({
-        'total':       round(total, 2),
+        'total':       float(round(total, 2)),
         'count':       len(expenses),
-        'largest':     round(max(e.amount for e in expenses), 2),
-        'by_category': by_category,
-        'by_month':    dict(sorted(by_month.items())),
+        'largest':     float(round(max(e.amount for e in expenses), 2)),
+        'by_category': {k: float(v) for k, v in by_category.items()},
+        'by_month':    {k: float(v) for k, v in sorted(by_month.items())},
     }), 200
 
 

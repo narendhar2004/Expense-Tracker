@@ -1,4 +1,6 @@
+import decimal
 from flask import Flask, jsonify
+from flask.json.provider import DefaultJSONProvider
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_bcrypt import Bcrypt
@@ -10,9 +12,28 @@ login  = LoginManager()
 bcrypt = Bcrypt()
 
 
+class DecimalAwareJSON(DefaultJSONProvider):
+    """Extend Flask's default JSON provider to serialise Decimal → float.
+
+    db.Numeric columns return Python Decimal objects.  Flask 3.x's built-in
+    encoder does not handle Decimal, so without this every jsonify() call
+    that includes an amount field would raise a TypeError.
+    Casting to float is intentional: the extra precision is already stored
+    correctly in the database; we only need float fidelity in JSON output.
+    """
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            return float(o)
+        return super().default(o)
+
+
 def create_app(config_name='default'):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config[config_name])
+
+    # Wire in the Decimal-aware JSON provider before any extension touches app
+    app.json_provider_class = DecimalAwareJSON
+    app.json = DecimalAwareJSON(app)
 
     db.init_app(app)
     login.init_app(app)

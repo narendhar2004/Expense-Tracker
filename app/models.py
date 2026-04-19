@@ -31,7 +31,7 @@ class Expense(db.Model):
 
     id               = db.Column(db.Integer,     primary_key=True)
     description      = db.Column(db.String(200), nullable=False)
-    amount           = db.Column(db.Float,        nullable=False)
+    amount           = db.Column(db.Numeric(precision=12, scale=2, asdecimal=True), nullable=False)
     category         = db.Column(db.String(50),  nullable=False)
     date             = db.Column(db.String(10),  nullable=False)
     notes            = db.Column(db.Text,         default='')
@@ -43,7 +43,7 @@ class Expense(db.Model):
         return {
             'id':               self.id,
             'description':      self.description,
-            'amount':           self.amount,
+            'amount':           float(self.amount),
             'category':         self.category,
             'date':             self.date,
             'notes':            self.notes,

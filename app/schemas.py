@@ -1,3 +1,4 @@
+from decimal import Decimal
 from marshmallow import Schema, fields, validate, validates, ValidationError
 from datetime import date as date_type
 
@@ -16,10 +17,12 @@ class ExpenseSchema(Schema):
             error='Description must be between 1 and 200 characters.'
         )
     )
-    amount = fields.Float(
+    amount = fields.Decimal(
         required=True,
+        places=2,
+        as_string=False,   # deserialise JSON number → Python Decimal (not str)
         validate=validate.Range(
-            min=0.01,
+            min=Decimal('0.01'),
             error='Amount must be greater than zero.'
         )
     )

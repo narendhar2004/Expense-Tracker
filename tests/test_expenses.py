@@ -351,3 +351,92 @@ class TestCsvExport:
     def test_export_unauthenticated(self, client):
         res = client.get('/api/expenses/export')
         assert res.status_code == 401
+
+
+class TestNumericPrecision:
+    """
+    Verify that switching from db.Float to db.Numeric(12,2) eliminates
+    IEEE-754 floating-point rounding errors in financial calculations.
+
+    The canonical example: 0.10 + 0.20 must equal 0.30 exactly.
+    With db.Float this fails because float(0.1) + float(0.2) = 0.30000000000000004.
+    """
+
+    def _create(self, client, amount, category='food'):
+        return client.post('/api/expenses', json={
+            'description': f'Precision test ₹{amount}',
+            'amount':      amount,
+            'category':    category,
+            'date':        '2026-01-01',
+        })
+
+    def test_stored_amount_is_exact(self, auth_client):
+        """0.10 stored and retrieved must equal 0.10, not 0.1000000000000000055…"""
+        res = self._create(auth_client, 0.10)
+        assert res.status_code == 201
+        data = res.get_json()
+        assert data['amount'] == 0.10
+        # Stored as NUMERIC(12,2): round-trip must be exact to 2 decimal places
+        assert round(data['amount'], 10) == 0.10
+
+    def test_addition_precision(self, auth_client):
+        """0.10 + 0.20 must equal 0.30 exactly in the API total."""
+        self._create(auth_client, 0.10)
+        self._create(auth_client, 0.20)
+
+        res = auth_client.get('/api/expenses')
+        data = res.get_json()
+        # This assertion fails with db.Float (gives 0.30000000000000004)
+        assert data['total'] == 0.30
+
+    def test_summary_total_precision(self, auth_client):
+        """Summary endpoint must also return exact totals."""
+        self._create(auth_client, 0.10)
+        self._create(auth_client, 0.20)
+
+        res = auth_client.get('/api/expenses/summary')
+        data = res.get_json()
+        assert data['total'] == 0.30
+
+    def test_three_tenths_sum(self, auth_client):
+        """Three 0.1 values must sum to exactly 0.30."""
+        for _ in range(3):
+            self._create(auth_client, 0.10)
+
+        res = auth_client.get('/api/expenses')
+        assert res.get_json()['total'] == 0.30
+
+    def test_large_precise_amount(self, auth_client):
+        """Amount at the 12-digit precision boundary is accepted and preserved."""
+        res = self._create(auth_client, 9999999999.99)
+        assert res.status_code == 201
+        assert res.get_json()['amount'] == 9999999999.99
+
+    def test_amount_serialised_as_number_not_string(self, auth_client):
+        """JSON response must contain a numeric type, not a quoted string."""
+        res = self._create(auth_client, 123.45)
+        data = res.get_json()
+        # If fields.Decimal(as_string=True) were mistakenly used,
+        # this would return "123.45" and isinstance check would fail.
+        assert isinstance(data['amount'], (int, float))
+        assert data['amount'] == 123.45
+
+    def test_update_preserves_precision(self, auth_client, sample_expense):
+        """PUT must store the updated amount with full precision."""
+        res = auth_client.put(f'/api/expenses/{sample_expense.id}', json={
+            'description': 'Precision update',
+            'amount':      0.10,
+            'category':    'food',
+            'date':        '2026-01-01',
+        })
+        assert res.status_code == 200
+        assert res.get_json()['amount'] == 0.10
+
+    def test_csv_export_two_decimal_places(self, auth_client):
+        """CSV export must format amounts to exactly 2 decimal places."""
+        self._create(auth_client, 0.10)
+        res = auth_client.get('/api/expenses/export')
+        assert res.status_code == 200
+        # Must contain '0.10', NOT '0.1000000000000000055...'
+        assert b'0.10' in res.data
+
