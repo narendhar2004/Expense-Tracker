@@ -175,6 +175,13 @@ async function deleteExpenseAPI(id) {
   return await apiFetch(`/api/expenses/${id}`, { method: 'DELETE' });
 }
 
+async function updateExpenseAPI(id, payload) {
+  return await apiFetch(`/api/expenses/${id}`, {
+    method: 'PUT',
+    body:   JSON.stringify(payload),
+  });
+}
+
 /* ============================================================
    VALIDATION
    ============================================================ */
@@ -299,6 +306,10 @@ function makeRow(expense, isNew = false) {
     </td>
     <td class="amount-col">${escapeHtml(formatCurrency(expense.amount))}</td>
     <td>
+      <button class="edit-btn" data-action="edit"
+              aria-label="Edit ${escapeHtml(expense.description)}">
+        Edit
+      </button>
       <button class="delete-btn" data-action="delete"
               aria-label="Delete ${escapeHtml(expense.description)}">
         Remove
@@ -383,12 +394,17 @@ async function deleteExpense(id) {
    ============================================================ */
 
 function handleTableClick(event) {
-  const btn = event.target.closest('[data-action="delete"]');
-  if (btn) {
-    const row = btn.closest('tr');
-    if (row && row.dataset.id) {
-      deleteExpense(row.dataset.id);
-    }
+  const btn = event.target.closest('[data-action]');
+  if (!btn) return;
+  const row = btn.closest('tr');
+  if (!row || !row.dataset.id) return;
+  const id = row.dataset.id;
+
+  if (btn.dataset.action === 'delete') {
+    deleteExpense(id);
+  } else if (btn.dataset.action === 'edit') {
+    const expense = expenses.find(e => String(e.id) === String(id));
+    if (expense) openEditModal(expense);
   }
 }
 
@@ -448,6 +464,141 @@ async function logoutUser() {
 }
 
 /* ============================================================
+   EDIT MODAL
+   ============================================================ */
+
+let editingExpenseId = null;
+
+function openEditModal(expense) {
+  editingExpenseId = expense.id;
+
+  // Pre-fill all fields with existing data
+  document.getElementById('edit-description').value = expense.description;
+  document.getElementById('edit-amount').value      = expense.amount;
+  document.getElementById('edit-category').value    = expense.category;
+  document.getElementById('edit-date').value        = expense.date;       // already YYYY-MM-DD
+  document.getElementById('edit-notes').value       = expense.notes || '';
+
+  clearEditErrors();
+  document.getElementById('edit-modal').showModal();
+  document.getElementById('edit-description').focus();
+}
+
+function validateEditForm() {
+  clearEditErrors();
+  let valid = true;
+
+  const desc   = document.getElementById('edit-description').value.trim();
+  const amount = parseFloat(document.getElementById('edit-amount').value);
+  const cat    = document.getElementById('edit-category').value;
+  const date   = document.getElementById('edit-date').value;
+
+  if (!desc) {
+    showEditError('edit-description-error', 'Description is required.');
+    valid = false;
+  }
+  if (isNaN(amount) || amount <= 0) {
+    showEditError('edit-amount-error', 'Enter a valid amount greater than zero.');
+    valid = false;
+  }
+  if (!cat) {
+    showEditError('edit-category-error', 'Please select a category.');
+    valid = false;
+  }
+  if (!date) {
+    showEditError('edit-date-error', 'Please select a date.');
+    valid = false;
+  }
+  return valid;
+}
+
+function showEditError(id, message) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = message;
+}
+
+function clearEditErrors() {
+  ['edit-description-error', 'edit-amount-error',
+   'edit-category-error',    'edit-date-error'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '';
+  });
+}
+
+function handleEditApiError(err) {
+  if (err.errors) {
+    Object.entries(err.errors).forEach(([field, messages]) => {
+      const msg = Array.isArray(messages) ? messages[0] : messages;
+      showEditError(`edit-${field}-error`, msg);
+    });
+  } else {
+    showToast(err.message || 'Could not save changes.', 'error');
+  }
+}
+
+async function handleEditSubmit(event) {
+  event.preventDefault();
+  if (!validateEditForm()) return;
+
+  const payload = {
+    description: document.getElementById('edit-description').value.trim(),
+    amount:      parseFloat(document.getElementById('edit-amount').value),
+    category:    document.getElementById('edit-category').value,
+    date:        document.getElementById('edit-date').value,
+    notes:       document.getElementById('edit-notes').value.trim(),
+  };
+
+  const btn = document.getElementById('edit-submit-btn');
+  btn.disabled    = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    const updated = await updateExpenseAPI(editingExpenseId, payload);
+
+    // Update in-memory state
+    const idx = expenses.findIndex(e => String(e.id) === String(editingExpenseId));
+    if (idx !== -1) expenses[idx] = updated;
+
+    // Replace the existing table row in-place
+    const oldRow = tbody && tbody.querySelector(`tr[data-id="${editingExpenseId}"]`);
+    if (oldRow) oldRow.replaceWith(makeRow(updated));
+
+    updateStats();
+    document.getElementById('edit-modal').close();
+    showToast('Expense updated');
+  } catch (err) {
+    handleEditApiError(err);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Save changes';
+  }
+}
+
+function initEditModal() {
+  const modal      = document.getElementById('edit-modal');
+  const editForm   = document.getElementById('edit-expense-form');
+  const cancelBtn  = document.getElementById('edit-cancel-btn');
+  const closeBtn   = document.getElementById('edit-modal-close');
+
+  if (!modal) return;   // not on dashboard page
+
+  editForm.addEventListener('submit', handleEditSubmit);
+
+  // Cancel / close-X buttons
+  const closeModal = () => modal.close();
+  cancelBtn.addEventListener('click', closeModal);
+  closeBtn.addEventListener('click', closeModal);
+
+  // Click outside dialog content closes it
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.close();
+  });
+
+  // Clear errors when modal is closed (ESC or programmatic)
+  modal.addEventListener('close', clearEditErrors);
+}
+
+/* ============================================================
    INIT
    ============================================================ */
 
@@ -475,6 +626,9 @@ async function init() {
 
   if (searchInput)    searchInput.addEventListener('input',  debouncedFilter);
   if (filterCategory) filterCategory.addEventListener('change', applyFilters);
+
+  // ── Edit modal ─────────────────────────────────────────
+  initEditModal();
 
   try {
     const data = await fetchExpenses();

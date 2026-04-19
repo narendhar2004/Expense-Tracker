@@ -169,4 +169,71 @@
   </section>
 
 </div>
+
+<!-- ── EDIT EXPENSE MODAL ─────────────────────────────── -->
+<dialog id="edit-modal" aria-labelledby="edit-modal-heading" aria-modal="true">
+  <div class="modal-inner">
+
+    <div class="modal-header">
+      <h2 id="edit-modal-heading">Edit expense</h2>
+      <button class="modal-close" id="edit-modal-close" aria-label="Close dialog">&times;</button>
+    </div>
+
+    <form id="edit-expense-form" novalidate>
+
+      <div class="form-group">
+        <label for="edit-description">Description</label>
+        <input type="text" id="edit-description" name="description"
+               maxlength="200" required autocomplete="off"
+               placeholder="e.g. Lunch at Saravana Bhavan">
+        <span class="field-error" id="edit-description-error" role="alert"></span>
+      </div>
+
+      <div class="form-group">
+        <label for="edit-amount">Amount (₹)</label>
+        <input type="number" id="edit-amount" name="amount"
+               placeholder="0.00" min="0.01" max="10000000"
+               step="0.01" required>
+        <span class="field-error" id="edit-amount-error" role="alert"></span>
+      </div>
+
+      <div class="form-group">
+        <label for="edit-category">Category</label>
+        <select id="edit-category" name="category" required>
+          <option value="">Select a category</option>
+          <option value="food">Food &amp; Dining</option>
+          <option value="transport">Transport</option>
+          <option value="shopping">Shopping</option>
+          <option value="health">Health</option>
+          <option value="entertainment">Entertainment</option>
+          <option value="utilities">Utilities</option>
+          <option value="other">Other</option>
+        </select>
+        <span class="field-error" id="edit-category-error" role="alert"></span>
+      </div>
+
+      <div class="form-group">
+        <label for="edit-date">Date</label>
+        <input type="date" id="edit-date" name="date" required>
+        <span class="field-error" id="edit-date-error" role="alert"></span>
+      </div>
+
+      <div class="form-group">
+        <label for="edit-notes">
+          Notes <span class="optional">(optional)</span>
+        </label>
+        <textarea id="edit-notes" name="notes"
+                  rows="2" maxlength="500"
+                  placeholder="Any extra details..."></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" id="edit-submit-btn">Save changes</button>
+        <button type="button" id="edit-cancel-btn">Cancel</button>
+      </div>
+
+    </form>
+  </div>
+</dialog>
+
 {% endblock %}

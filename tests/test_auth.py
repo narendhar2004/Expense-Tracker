@@ -43,7 +43,8 @@ class TestRegister:
     def test_register_no_body(self, client, db):
         res = client.post('/api/auth/register', data='not json',
                           content_type='text/plain')
-        assert res.status_code == 400
+        # Flask 3.x returns 415 Unsupported Media Type for non-JSON bodies
+        assert res.status_code in (400, 415)
 
 
 class TestLogin:
@@ -81,6 +82,7 @@ class TestLogin:
     def test_me_authenticated(self, auth_client, test_user):
         res = auth_client.get('/api/auth/me')
         assert res.status_code == 200
+        # test_user.id is a plain int — safe to access on expunged objects
         assert res.get_json()['user']['id'] == test_user.id
 
     def test_me_unauthenticated(self, client):

@@ -7,3 +7,5 @@ instance/
 .DS_Store
 *.db
 *.sqlite
+.pytest_cache/
+tests/__pycache__/

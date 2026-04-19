@@ -974,3 +974,103 @@ body.loading header,
 body.loading footer {
   visibility: hidden;
 }
+
+/* ============================================================
+   EDIT BUTTON (mirrors delete-btn reveal pattern)
+   ============================================================ */
+.edit-btn {
+  opacity: 0;
+  background: transparent;
+  border: none;
+  color: var(--color-accent);
+  cursor: pointer;
+  padding: 4px 9px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+  margin-right: 2px;
+}
+
+#expense-table tbody tr:hover .edit-btn { opacity: 1; }
+.edit-btn:hover { background: #eff6ff; }
+[data-theme="dark"] .edit-btn:hover { background: #0d2240; }
+
+/* ============================================================
+   MODAL  (native <dialog> element)
+   ============================================================ */
+#edit-modal {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 0;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  width: min(480px, calc(100vw - 2rem));
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+
+  /* Open animation */
+  animation: modal-enter 0.18s ease forwards;
+}
+
+@keyframes modal-enter {
+  from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+#edit-modal::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+[data-theme="dark"] #edit-modal {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+}
+
+.modal-inner {
+  padding: var(--space-lg);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-lg);
+}
+
+.modal-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  font-size: 1.375rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.modal-close:hover {
+  color: var(--color-text-primary);
+  background: var(--color-border);
+}
+
+/* Override the global submit-btn flex:1 inside the modal */
+#edit-expense-form .form-actions #edit-submit-btn { flex: 1; }
+#edit-cancel-btn {
+  padding: 10px 16px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+  transition: background var(--transition-fast);
+  cursor: pointer;
+  white-space: nowrap;
+}
+#edit-cancel-btn:hover { background: var(--color-surface-2); }

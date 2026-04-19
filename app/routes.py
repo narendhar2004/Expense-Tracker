@@ -60,8 +60,8 @@ def get_expenses():
 @expenses_bp.route('/expenses', methods=['POST'])
 @login_required
 def create_expense():
-    data = request.get_json()
-    if not data:
+    data = request.get_json(silent=True)
+    if data is None:
         return jsonify({'error': 'Request body must be JSON'}), 400
 
     try:
@@ -159,8 +159,8 @@ def update_expense(expense_id):
         id=expense_id, user_id=current_user.id
     ).first_or_404()
 
-    data = request.get_json()
-    if not data:
+    data = request.get_json(silent=True)
+    if data is None:
         return jsonify({'error': 'Request body must be JSON'}), 400
 
     try:

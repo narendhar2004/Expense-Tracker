@@ -13,8 +13,8 @@ login_schema    = LoginSchema()
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
-    data = request.get_json()
-    if not data:
+    data = request.get_json(silent=True)
+    if data is None:
         return jsonify({'error': 'Request body must be JSON'}), 400
 
     try:
@@ -48,8 +48,8 @@ def login():
     if current_user.is_authenticated:
         return jsonify({'message': 'Already logged in', 'user': current_user.to_dict()}), 200
 
-    data = request.get_json()
-    if not data:
+    data = request.get_json(silent=True)
+    if data is None:
         return jsonify({'error': 'Request body must be JSON'}), 400
 
     try:

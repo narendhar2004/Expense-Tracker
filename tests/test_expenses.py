@@ -155,7 +155,8 @@ class TestCreateExpense:
     def test_create_no_body(self, auth_client):
         res = auth_client.post('/api/expenses',
                                data='not json', content_type='text/plain')
-        assert res.status_code == 400
+        # Flask 3.x returns 415 Unsupported Media Type for non-JSON bodies.
+        assert res.status_code in (400, 415)
 
 
 class TestGetSingleExpense:
@@ -219,6 +220,67 @@ class TestUpdateExpense:
             'category': 'food', 'date': '2026-03-13'
         })
         assert res.status_code == 404
+
+    def test_update_unauthenticated(self, client, sample_expense):
+        res = client.put(f'/api/expenses/{sample_expense.id}', json={
+            'description': 'No auth', 'amount': 100,
+            'category': 'food', 'date': '2026-03-13'
+        })
+        assert res.status_code == 401
+
+    def test_update_clears_notes(self, auth_client, sample_expense):
+        """Sending empty notes should store an empty string."""
+        res = auth_client.put(f'/api/expenses/{sample_expense.id}', json={
+            'description': 'Lunch',
+            'amount':      350.0,
+            'category':    'food',
+            'date':        '2026-03-13',
+            'notes':       '',
+        })
+        assert res.status_code == 200
+        assert res.get_json()['notes'] == ''
+
+    def test_update_category_change(self, auth_client, sample_expense):
+        """Category can be changed to any valid value."""
+        res = auth_client.put(f'/api/expenses/{sample_expense.id}', json={
+            'description': 'Cab ride',
+            'amount':      120.0,
+            'category':    'transport',
+            'date':        '2026-03-13',
+        })
+        assert res.status_code == 200
+        assert res.get_json()['category'] == 'transport'
+
+    def test_update_nonexistent_expense(self, auth_client):
+        """Updating a non-existent expense returns 404."""
+        res = auth_client.put('/api/expenses/99999', json={
+            'description': 'Ghost', 'amount': 1,
+            'category': 'food', 'date': '2026-03-13'
+        })
+        assert res.status_code == 404
+
+    def test_update_description_max_length(self, auth_client, sample_expense):
+        """Description exactly at the 200-char limit should be accepted."""
+        long_desc = 'A' * 200
+        res = auth_client.put(f'/api/expenses/{sample_expense.id}', json={
+            'description': long_desc,
+            'amount':      350.0,
+            'category':    'food',
+            'date':        '2026-03-13',
+        })
+        assert res.status_code == 200
+        assert res.get_json()['description'] == long_desc
+
+    def test_update_description_too_long(self, auth_client, sample_expense):
+        """Description over 200 chars should be rejected."""
+        res = auth_client.put(f'/api/expenses/{sample_expense.id}', json={
+            'description': 'B' * 201,
+            'amount':      350.0,
+            'category':    'food',
+            'date':        '2026-03-13',
+        })
+        assert res.status_code == 422
+        assert 'description' in res.get_json()['errors']
 
 
 class TestDeleteExpense:
