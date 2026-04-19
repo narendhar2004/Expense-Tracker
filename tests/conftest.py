@@ -1,4 +1,5 @@
 import pytest
+from datetime import date as dt_date
 from flask import jsonify
 from app import create_app, db as _db, login as login_manager
 from app.models import User, Expense
@@ -72,7 +73,7 @@ def sample_expense(db, test_user, app):
             description = 'Test lunch',
             amount      = 350.0,
             category    = 'food',
-            date        = '2026-03-13',
+            date        = dt_date(2026, 3, 13),
             notes       = 'Test note',
             user_id     = test_user.id,
         )

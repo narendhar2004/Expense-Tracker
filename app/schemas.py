@@ -1,6 +1,5 @@
 from decimal import Decimal
 from marshmallow import Schema, fields, validate, validates, ValidationError
-from datetime import date as date_type
 
 
 VALID_CATEGORIES = [
@@ -33,15 +32,12 @@ class ExpenseSchema(Schema):
             error='Invalid category. Choose from: ' + ', '.join(VALID_CATEGORIES)
         )
     )
-    date = fields.Str(required=True)
+    date = fields.Date(
+        required=True,
+        format='iso',     # accepts 'YYYY-MM-DD', rejects anything else
+        error_messages={'invalid': 'Date must be in YYYY-MM-DD format.'}
+    )
     notes = fields.Str(load_default='', validate=validate.Length(max=500))
-
-    @validates('date')
-    def validate_date(self, value, **kwargs):
-        try:
-            date_type.fromisoformat(value)
-        except ValueError:
-            raise ValidationError('Date must be in YYYY-MM-DD format.')
 
 
 class RegisterSchema(Schema):

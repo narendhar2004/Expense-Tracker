@@ -1,6 +1,7 @@
 import os
 import csv
 import io
+from datetime import date as date_type
 from flask import Blueprint, request, jsonify, Response, current_app
 from flask_login import login_required, current_user
 from marshmallow import ValidationError
@@ -35,9 +36,15 @@ def get_expenses():
     if category:
         query = query.filter_by(category=category)
     if start_date:
-        query = query.filter(Expense.date >= start_date)
+        try:
+            query = query.filter(Expense.date >= date_type.fromisoformat(start_date))
+        except ValueError:
+            return jsonify({'error': 'start_date must be YYYY-MM-DD'}), 400
     if end_date:
-        query = query.filter(Expense.date <= end_date)
+        try:
+            query = query.filter(Expense.date <= date_type.fromisoformat(end_date))
+        except ValueError:
+            return jsonify({'error': 'end_date must be YYYY-MM-DD'}), 400
 
     sort_map = {
         'date_desc':   Expense.date.desc(),
@@ -97,7 +104,7 @@ def get_summary():
 
     by_month = {}
     for e in expenses:
-        month = e.date[:7]
+        month = e.date.strftime('%Y-%m')
         by_month[month] = round(by_month.get(month, 0) + e.amount, 2)
 
     return jsonify({
@@ -123,7 +130,7 @@ def export_csv():
     writer = csv.writer(output)
     writer.writerow(['Date', 'Description', 'Category', 'Amount (INR)', 'Notes'])
     for e in expenses:
-        writer.writerow([e.date, e.description, e.category,
+        writer.writerow([e.date.isoformat(), e.description, e.category,
                          f'{e.amount:.2f}', e.notes or ''])
     writer.writerow(['', '', 'TOTAL',
                      f'{sum(e.amount for e in expenses):.2f}', ''])

@@ -1,3 +1,4 @@
+from datetime import date as dt_date
 from app.models import Expense
 
 
@@ -28,10 +29,10 @@ class TestGetExpenses:
 
     def test_filter_by_category(self, auth_client, db, test_user):
         db.session.add(Expense(description='Bus', amount=50,
-                               category='transport', date='2026-03-13',
+                               category='transport', date=dt_date(2026, 3, 13),
                                user_id=test_user.id))
         db.session.add(Expense(description='Lunch', amount=200,
-                               category='food', date='2026-03-13',
+                               category='food', date=dt_date(2026, 3, 13),
                                user_id=test_user.id))
         db.session.commit()
         res = auth_client.get('/api/expenses?category=transport')
@@ -41,10 +42,10 @@ class TestGetExpenses:
 
     def test_filter_by_date_range(self, auth_client, db, test_user):
         db.session.add(Expense(description='Jan expense', amount=100,
-                               category='food', date='2026-01-15',
+                               category='food', date=dt_date(2026, 1, 15),
                                user_id=test_user.id))
         db.session.add(Expense(description='Mar expense', amount=200,
-                               category='food', date='2026-03-10',
+                               category='food', date=dt_date(2026, 3, 10),
                                user_id=test_user.id))
         db.session.commit()
         res = auth_client.get('/api/expenses?start_date=2026-03-01&end_date=2026-03-31')
@@ -53,10 +54,10 @@ class TestGetExpenses:
 
     def test_sort_amount_desc(self, auth_client, db, test_user):
         db.session.add(Expense(description='Cheap', amount=50,
-                               category='food', date='2026-03-13',
+                               category='food', date=dt_date(2026, 3, 13),
                                user_id=test_user.id))
         db.session.add(Expense(description='Expensive', amount=5000,
-                               category='food', date='2026-03-13',
+                               category='food', date=dt_date(2026, 3, 13),
                                user_id=test_user.id))
         db.session.commit()
         res = auth_client.get('/api/expenses?sort=amount_desc')
@@ -440,3 +441,97 @@ class TestNumericPrecision:
         # Must contain '0.10', NOT '0.1000000000000000055...'
         assert b'0.10' in res.data
 
+
+class TestDateHandling:
+    """Verify db.Date column stores, validates, and queries dates correctly."""
+
+    def _post(self, client, date_str, desc='Date test'):
+        return client.post('/api/expenses', json={
+            'description': desc, 'amount': 100,
+            'category': 'food', 'date': date_str,
+        })
+
+    # ── Round-trip serialisation ──────────────────────────────────────────
+    def test_date_returned_as_iso_string(self, auth_client):
+        """API must return date as 'YYYY-MM-DD' string, not a Python object."""
+        res = self._post(auth_client, '2026-06-15')
+        assert res.status_code == 201
+        data = res.get_json()
+        assert data['date'] == '2026-06-15'
+        assert isinstance(data['date'], str)
+
+    # ── Format validation ────────────────────────────────────────────────
+    def test_dd_mm_yyyy_rejected(self, auth_client):
+        res = self._post(auth_client, '15-06-2026')
+        assert res.status_code == 422
+        assert 'date' in res.get_json()['errors']
+
+    def test_slash_format_rejected(self, auth_client):
+        res = self._post(auth_client, '2026/06/15')
+        assert res.status_code == 422
+        assert 'date' in res.get_json()['errors']
+
+    def test_impossible_date_rejected(self, auth_client):
+        """Feb 30 must be rejected — db.Date knows it doesn't exist."""
+        res = self._post(auth_client, '2026-02-30')
+        assert res.status_code == 422
+        assert 'date' in res.get_json()['errors']
+
+    def test_leap_year_date_accepted(self, auth_client):
+        """Feb 29 in a genuine leap year is valid."""
+        res = self._post(auth_client, '2024-02-29')
+        assert res.status_code == 201
+        assert res.get_json()['date'] == '2024-02-29'
+
+    def test_non_leap_year_feb29_rejected(self, auth_client):
+        res = self._post(auth_client, '2025-02-29')
+        assert res.status_code == 422
+
+    def test_future_date_accepted(self, auth_client):
+        """Future dates are valid (pre-payments, upcoming expenses)."""
+        res = self._post(auth_client, '2030-12-31')
+        assert res.status_code == 201
+
+    # ── Date range filtering ──────────────────────────────────────────────
+    def test_date_range_includes_boundaries(self, auth_client, db, test_user):
+        """start_date and end_date boundaries are inclusive."""
+        for d in [dt_date(2026, 9, 1), dt_date(2026, 9, 15), dt_date(2026, 9, 30)]:
+            db.session.add(Expense(description=f'In {d}', amount=10,
+                                   category='food', date=d, user_id=test_user.id))
+        db.session.add(Expense(description='Out Oct', amount=10, category='food',
+                               date=dt_date(2026, 10, 1), user_id=test_user.id))
+        db.session.commit()
+        res = auth_client.get('/api/expenses?start_date=2026-09-01&end_date=2026-09-30')
+        data = res.get_json()
+        assert data['count'] == 3
+        assert all(e['date'] >= '2026-09-01' for e in data['expenses'])
+        assert all(e['date'] <= '2026-09-30' for e in data['expenses'])
+
+    def test_invalid_start_date_param_returns_400(self, auth_client):
+        res = auth_client.get('/api/expenses?start_date=not-a-date')
+        assert res.status_code == 400
+
+    def test_invalid_end_date_param_returns_400(self, auth_client):
+        res = auth_client.get('/api/expenses?end_date=31/12/2026')
+        assert res.status_code == 400
+
+    # ── Summary by_month grouping ─────────────────────────────────────────
+    def test_by_month_key_format(self, auth_client):
+        """Summary by_month keys must be 'YYYY-MM'."""
+        self._post(auth_client, '2026-11-05')
+        self._post(auth_client, '2026-11-20')
+        res = auth_client.get('/api/expenses/summary')
+        data = res.get_json()
+        assert '2026-11' in data['by_month']
+        assert data['by_month']['2026-11'] == 200.0
+
+    # ── CSV export ────────────────────────────────────────────────────────
+    def test_csv_date_column_is_iso_format(self, auth_client):
+        """CSV must contain 'YYYY-MM-DD', not Python's repr of a date object."""
+        self._post(auth_client, '2026-07-04')
+        res = auth_client.get('/api/expenses/export')
+        assert res.status_code == 200
+        assert b'2026-07-04' in res.data
+        # Python's default date repr would be e.g. '2026-07-04' but we
+        # explicitly call .isoformat() to guard against any future change.
+        assert b'datetime.date' not in res.data

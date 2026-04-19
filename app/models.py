@@ -33,7 +33,7 @@ class Expense(db.Model):
     description      = db.Column(db.String(200), nullable=False)
     amount           = db.Column(db.Numeric(precision=12, scale=2, asdecimal=True), nullable=False)
     category         = db.Column(db.String(50),  nullable=False)
-    date             = db.Column(db.String(10),  nullable=False)
+    date             = db.Column(db.Date,          nullable=False)
     notes            = db.Column(db.Text,         default='')
     receipt_filename = db.Column(db.String(200),  nullable=True)
     created_at       = db.Column(db.DateTime,     default=lambda: datetime.now(timezone.utc))
@@ -45,7 +45,7 @@ class Expense(db.Model):
             'description':      self.description,
             'amount':           float(self.amount),
             'category':         self.category,
-            'date':             self.date,
+            'date':             self.date.isoformat(),
             'notes':            self.notes,
             'receipt_filename': self.receipt_filename,
             'created_at':       self.created_at.isoformat(),
